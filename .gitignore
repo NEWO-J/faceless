@@ -1,0 +1,12 @@
+# Local posture state (may contain your real identifiers / observed values)
+opsec.yaml
+opsec.lock.yaml
+.fle-cache.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/

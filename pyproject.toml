@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "faceless-engine"
+version = "0.2.0"
+description = "OpSec-as-Code: declare your operational-security posture and re-assert it every command."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "PyYAML>=6.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+fle = "fle.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fle*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

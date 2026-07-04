@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faceless-engine.dev/schema/report.schema.json",
+  "title": "OpSec-as-Code posture report",
+  "type": "object",
+  "required": ["opsec_version", "conformant", "summary", "results"],
+  "properties": {
+    "opsec_version": { "const": 1 },
+    "name": { "type": ["string", "null"] },
+    "conformant": { "type": "boolean" },
+    "summary": {
+      "type": "object",
+      "required": ["evaluated", "failing", "by_state"],
+      "properties": {
+        "evaluated": { "type": "integer" },
+        "failing": { "type": "integer" },
+        "by_state": { "type": "object" }
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["control", "state", "severity", "summary"],
+        "properties": {
+          "control": { "type": "string" },
+          "state": { "enum": ["ok", "drift", "violation", "not_applicable", "error", "not_enforced"] },
+          "severity": { "enum": ["low", "medium", "high", "critical"] },
+          "summary": { "type": "string" },
+          "detail": { "type": "string" },
+          "remediable": { "type": "boolean" },
+          "observed": { "type": ["object", "null"] }
+        }
+      }
+    }
+  }
+}

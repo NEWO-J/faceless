@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faceless-engine.dev/schema/opsec.schema.json",
+  "title": "OpSec-as-Code desired-state config",
+  "type": "object",
+  "required": ["opsec_version", "posture"],
+  "additionalProperties": false,
+  "properties": {
+    "opsec_version": { "const": 1 },
+    "name": { "type": "string" },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persona": { "type": "object", "additionalProperties": { "type": "string" } },
+        "real": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "posture": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["control"],
+        "additionalProperties": false,
+        "properties": {
+          "control": { "type": "string", "pattern": "^OPSEC-[A-Z]+-[0-9]+$" },
+          "severity": { "enum": ["low", "medium", "high", "critical"] },
+          "params": { "type": "object" }
+        }
+      }
+    },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "on_command": { "enum": ["block", "warn", "off"] },
+        "auto_remediate": { "enum": ["off", "safe", "full"] }
+      }
+    }
+  }
+}
