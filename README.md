@@ -1,5 +1,4 @@
 # faceless engine: OpSec-as-Code
-![Alt Text](faceless.png)
 
 > Declare your operational-security posture as code, then re-assert it on every
 > command so it can never silently drift.
