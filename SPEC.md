@@ -84,7 +84,7 @@ works, it always works" precise: known-good is pinned, and any deviation is drif
 
 ## 6. Conformance
 
-> A posture is **conformant** iff no control of severity ≥ `high` is in state
+> A posture is **conformant** if no control of severity ≥ `high` is in state
 > `drift`, `violation`, or `error`.
 
 A conformant `verify` exits `0`; a non-conformant one exits `10`. This single
