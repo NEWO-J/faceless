@@ -146,6 +146,16 @@ def test_tcp_timestamps(monkeypatch):
     assert network.TcpTimestampsProvider().observe(_ctx("FLE-NET-013")).state is State.VIOLATION
 
 
+def test_tor_egress(monkeypatch):
+    monkeypatch.setattr(network, "_tor_check", lambda: {"IsTor": True, "IP": "185.220.101.1"})
+    r = network.TorEgressProvider().observe(_ctx("FLE-NET-015"))
+    assert r.state is State.OK and r.observed["is_tor"] == "true"
+    monkeypatch.setattr(network, "_tor_check", lambda: {"IsTor": False, "IP": "203.0.113.5"})
+    assert network.TorEgressProvider().observe(_ctx("FLE-NET-015")).state is State.VIOLATION
+    monkeypatch.setattr(network, "_tor_check", lambda: None)
+    assert network.TorEgressProvider().observe(_ctx("FLE-NET-015")).state is State.ERROR
+
+
 def test_public_ip_leak(monkeypatch):
     # opt-in: no forbidden_ips => not applicable
     assert network.PublicIpProvider().observe(_ctx("FLE-NET-014")).state is State.NOT_APPLICABLE

@@ -110,6 +110,7 @@ LAN-side broadcast hardening.
 | `FLE-NET-012` | captive-portal connectivity check is disabled |
 | `FLE-NET-013` | TCP timestamps disabled (no uptime fingerprint) |
 | `FLE-NET-014` | public egress IP is not a forbidden (real) address |
+| `FLE-NET-015` | requests egress through the Tor network |
 
 `FLE-NET-014` is the definitive leak proof: it fetches your public IP and
 fails if the outside world sees an address you flagged as real. It's opt-in
@@ -130,6 +131,24 @@ include `tails`, `whonix-gateway`, `whonix-workstation`, `qubes`, ordinary distr
 ids (`debian`, `ubuntu`, ...), `windows`, and `macos`. Umbrella terms work too:
 `whonix` matches either Whonix VM, `anonymity` matches Tails/Whonix/Qubes, and
 `linux` matches any distro.
+
+**Browser fingerprinting resistance (Firefox / Tor Browser)**
+
+The goal is uniformity, not uniqueness: a hardened browser makes you look like
+everyone else in the Tor Browser crowd, which shrinks your fingerprint. These
+controls verify that hardening is on. They read Firefox prefs and never spoof or
+rotate anything.
+
+| ID | Checks |
+|----|--------|
+| `FLE-BROWSER-001` | `privacy.resistFingerprinting` on (uniform UA, screen, timezone, canvas) |
+| `FLE-BROWSER-002` | WebRTC disabled (no IP leak past the VPN) |
+| `FLE-BROWSER-003` | canvas/WebGL fingerprinting mitigated |
+| `FLE-BROWSER-004` | browser telemetry disabled |
+| `FLE-BROWSER-005` | RFP letterboxing rounds the window size |
+
+Pull them all in with `- bundle: browser-hardening`. Reports `not_applicable`
+when no Firefox profile is found.
 
 ### Bundles
 

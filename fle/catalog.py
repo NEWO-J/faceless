@@ -166,6 +166,44 @@ CATALOG: dict[str, ControlSpec] = {
         rationale="The definitive leak test: prove the outside world does not see your real IP.",
         expensive=True,
     ),
+    "FLE-NET-015": ControlSpec(
+        id="FLE-NET-015", domain="net",
+        title="Requests egress through the Tor network",
+        default_severity=Severity.CRITICAL, remediable=False,
+        rationale="Confirms traffic actually exits via a Tor node — the core guarantee of Tails/Whonix.",
+        expensive=True,
+    ),
+    # -- Browser fingerprinting resistance (Firefox / Tor Browser) ---------
+    "FLE-BROWSER-001": ControlSpec(
+        id="FLE-BROWSER-001", domain="browser",
+        title="Firefox resistFingerprinting is enabled",
+        default_severity=Severity.HIGH, remediable=False,
+        rationale="The master anti-fingerprinting switch: standardizes UA, screen, timezone, canvas.",
+    ),
+    "FLE-BROWSER-002": ControlSpec(
+        id="FLE-BROWSER-002", domain="browser",
+        title="WebRTC is disabled in the browser",
+        default_severity=Severity.HIGH, remediable=False,
+        rationale="WebRTC can reveal the real IP behind a VPN via STUN.",
+    ),
+    "FLE-BROWSER-003": ControlSpec(
+        id="FLE-BROWSER-003", domain="browser",
+        title="Canvas/WebGL fingerprinting is mitigated",
+        default_severity=Severity.MEDIUM, remediable=False,
+        rationale="Canvas and WebGL rendering produce a highly unique device fingerprint.",
+    ),
+    "FLE-BROWSER-004": ControlSpec(
+        id="FLE-BROWSER-004", domain="browser",
+        title="Browser telemetry is disabled",
+        default_severity=Severity.MEDIUM, remediable=False,
+        rationale="Telemetry uploads usage and environment data that aids correlation.",
+    ),
+    "FLE-BROWSER-005": ControlSpec(
+        id="FLE-BROWSER-005", domain="browser",
+        title="RFP letterboxing rounds the window size",
+        default_severity=Severity.LOW, remediable=False,
+        rationale="Exact inner window dimensions are a stable, high-entropy fingerprint.",
+    ),
     # -- Operating-system target -------------------------------------------
     "FLE-OS-001": ControlSpec(
         id="FLE-OS-001", domain="os",
@@ -188,8 +226,12 @@ BUNDLES: dict[str, list[str]] = {
     ],
     # Anonymity-OS presets: verify the OS, plus the leak checks that matter most
     # on Tails/Whonix (IPv6 off, no MAC-derived address, MAC randomization).
-    "tails": ["FLE-OS-001", "FLE-NET-002", "FLE-NET-010", "FLE-NET-011"],
-    "whonix": ["FLE-OS-001", "FLE-NET-002", "FLE-NET-010", "FLE-NET-011"],
+    "tails": ["FLE-OS-001", "FLE-NET-002", "FLE-NET-010", "FLE-NET-011", "FLE-NET-015"],
+    "whonix": ["FLE-OS-001", "FLE-NET-002", "FLE-NET-010", "FLE-NET-011", "FLE-NET-015"],
+    "browser-hardening": [
+        "FLE-BROWSER-001", "FLE-BROWSER-002", "FLE-BROWSER-003",
+        "FLE-BROWSER-004", "FLE-BROWSER-005",
+    ],
 }
 
 

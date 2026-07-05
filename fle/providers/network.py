@@ -474,8 +474,44 @@ class PublicIpProvider(Provider):
         return self.result(ctx, State.OK, f"egress IP {ip} is not a forbidden address", observed=observed)
 
 
+def _tor_check() -> dict | None:
+    """Ask the Tor Project whether our egress IP is a Tor exit. Overridable in tests."""
+    import json
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(  # noqa: S310
+            "https://check.torproject.org/api/ip", timeout=10
+        ) as resp:
+            return json.loads(resp.read().decode("utf-8", "replace"))
+    except Exception:  # noqa: BLE001 - any failure => unknown
+        return None
+
+
+class TorEgressProvider(Provider):
+    """Cross-platform: confirm traffic actually egresses through the Tor network."""
+
+    control_id = "FLE-NET-015"
+
+    def observe(self, ctx: ProviderContext):
+        data = _tor_check()
+        if data is None:
+            return self.result(ctx, State.ERROR, "could not reach the Tor check service")
+        is_tor = bool(data.get("IsTor"))
+        ip = str(data.get("IP", ""))
+        observed = {"is_tor": str(is_tor).lower(), "exit_ip": ip}
+        if is_tor:
+            return self.result(ctx, State.OK, f"egress confirmed through Tor (exit {ip})",
+                               observed=observed)
+        return self.result(
+            ctx, State.VIOLATION, f"egress is NOT going through Tor (clearnet IP {ip})",
+            detail="traffic is leaving directly; use transparent Tor (Whonix/Tails) or a Tor gateway.",
+            observed=observed,
+        )
+
+
 for _p in (EncryptedDnsProvider(), ResolverIsGatewayProvider(), LlmnrProvider(),
            MdnsProvider(), Ipv6PrivacyProvider(), Ipv6Eui64Provider(),
            MacRandomizationProvider(), ConnectivityCheckProvider(),
-           TcpTimestampsProvider(), PublicIpProvider()):
+           TcpTimestampsProvider(), PublicIpProvider(), TorEgressProvider()):
     register(_p)
