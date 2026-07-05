@@ -1,10 +1,3 @@
-"""The evaluation loop: desired state → observed state → posture report.
-
-``evaluate`` runs each declared control's provider and compares the result to
-the desired state and, if a lock is present, to the last known-good snapshot.
-``converge`` runs remediation on the failing, remediable controls.
-"""
-
 from __future__ import annotations
 
 from dataclasses import replace
