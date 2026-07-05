@@ -1,16 +1,3 @@
-"""Command-line front-end for the OpSec-as-Code posture engine.
-
-    fle init                     write an opsec.yaml (guided)
-    fle verify | plan            evaluate posture (drift check); read-only
-    fle apply                    converge failing, remediable controls
-    fle lock                     pin the current known-good posture
-    fle status                   one-line summary (for the shell prompt)
-    fle hook install|uninstall   wire the per-command shell hook
-
-Nothing here is a gate that runs code — it evaluates *posture*. Exit codes:
-0 conformant, 10 non-conformant, 11 config error, 12 engine error, 2 usage.
-"""
-
 from __future__ import annotations
 
 import argparse
