@@ -17,8 +17,8 @@ from fle.model import CheckResult, PostureReport, Severity, State
 def _report(conformant=True):
     state = State.OK if conformant else State.VIOLATION
     return PostureReport(results=(
-        CheckResult("OPSEC-NET-003", state, Severity.HIGH, "firewall"),
-        CheckResult("OPSEC-DISK-001", State.OK, Severity.HIGH, "disk", observed={"secret": "x"}),
+        CheckResult("FLE-NET-003", state, Severity.HIGH, "firewall"),
+        CheckResult("FLE-DISK-001", State.OK, Severity.HIGH, "disk", observed={"secret": "x"}),
     ))
 
 

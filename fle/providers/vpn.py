@@ -1,4 +1,4 @@
-"""OPSEC-EGRESS-001 — declared VPN interface is present.
+"""FLE-EGRESS-001 — declared VPN interface is present.
 
 A silently-dropped tunnel is the highest-consequence drift: your real IP and
 cleartext metadata are suddenly exposed to the ISP while you believe you're
@@ -52,7 +52,7 @@ def _list_interfaces() -> set[str]:
 
 
 class VpnInterfaceProvider(Provider):
-    control_id = "OPSEC-EGRESS-001"
+    control_id = "FLE-EGRESS-001"
 
     def observe(self, ctx: ProviderContext):
         interface = str(ctx.params.get("interface", "")).strip()

@@ -16,9 +16,9 @@ VALID = {
         "real": {"names": ["Jane Doe"], "emails": ["jane@real.example"]},
     },
     "posture": [
-        {"control": "OPSEC-IDENTITY-101"},
-        {"control": "OPSEC-SECRET-060", "params": {"forbidden_paths": ["~/.netrc"]}},
-        {"control": "OPSEC-DISK-001", "severity": "critical"},
+        {"control": "FLE-IDENTITY-101"},
+        {"control": "FLE-SECRET-060", "params": {"forbidden_paths": ["~/.netrc"]}},
+        {"control": "FLE-DISK-001", "severity": "critical"},
     ],
     "enforcement": {"on_command": "block", "auto_remediate": "full"},
 }
@@ -35,7 +35,7 @@ def test_valid_config_parses():
 
 def test_severity_override_applied():
     cfg = OpsecConfig.from_mapping(VALID)
-    disk = next(i for i in cfg.posture if i.control_id == "OPSEC-DISK-001")
+    disk = next(i for i in cfg.posture if i.control_id == "FLE-DISK-001")
     assert disk.severity is Severity.CRITICAL
 
 
@@ -46,7 +46,7 @@ def test_bad_version_rejected():
 
 def test_unknown_control_rejected():
     with pytest.raises(ConfigError):
-        OpsecConfig.from_mapping({**VALID, "posture": [{"control": "OPSEC-NOPE-999"}]})
+        OpsecConfig.from_mapping({**VALID, "posture": [{"control": "FLE-NOPE-999"}]})
 
 
 def test_empty_posture_rejected():
@@ -55,7 +55,7 @@ def test_empty_posture_rejected():
 
 
 def test_duplicate_control_rejected():
-    doc = {**VALID, "posture": [{"control": "OPSEC-DISK-001"}, {"control": "OPSEC-DISK-001"}]}
+    doc = {**VALID, "posture": [{"control": "FLE-DISK-001"}, {"control": "FLE-DISK-001"}]}
     with pytest.raises(ConfigError):
         OpsecConfig.from_mapping(doc)
 

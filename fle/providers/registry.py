@@ -19,5 +19,5 @@ def get_provider(control_id: str) -> Provider | None:
 def load_builtin_providers() -> None:
     """Import built-in provider modules so they self-register (idempotent)."""
     from . import (  # noqa: F401
-        disk, environment, filesystem, git_identity, network, vpn,
+        disk, environment, filesystem, git_identity, network, os_target, vpn,
     )

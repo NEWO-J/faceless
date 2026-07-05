@@ -47,6 +47,13 @@ class PostureItem:
 
 
 @dataclass(frozen=True, slots=True)
+class OsPolicy:
+    """Declared target operating system(s) for this posture."""
+
+    expected: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Enforcement:
     on_command: str = "warn"
     auto_remediate: str = "safe"
@@ -58,6 +65,7 @@ class OpsecConfig:
     identity: Identity
     posture: tuple[PostureItem, ...]
     enforcement: Enforcement
+    os_policy: OsPolicy = field(default_factory=OsPolicy)
     source: Path | None = None
 
     @classmethod
@@ -77,6 +85,7 @@ class OpsecConfig:
             identity=config.identity,
             posture=config.posture,
             enforcement=config.enforcement,
+            os_policy=config.os_policy,
             source=config_path,
         )
 
@@ -92,9 +101,26 @@ class OpsecConfig:
         identity = cls._parse_identity(document.get("identity", {}))
         posture = cls._parse_posture(document.get("posture", []))
         enforcement = cls._parse_enforcement(document.get("enforcement", {}))
-        return cls(name=name, identity=identity, posture=posture, enforcement=enforcement)
+        os_policy = cls._parse_os(document.get("os", {}))
+        return cls(name=name, identity=identity, posture=posture,
+                   enforcement=enforcement, os_policy=os_policy)
 
     # -- parsers -----------------------------------------------------------
+
+    @staticmethod
+    def _parse_os(raw: object) -> OsPolicy:
+        if not raw:
+            return OsPolicy()
+        if not isinstance(raw, Mapping):
+            raise ConfigError("`os` must be a mapping")
+        expect = raw.get("expect", [])
+        if isinstance(expect, str):
+            expected = (expect.strip().lower(),)
+        elif isinstance(expect, (list, tuple)):
+            expected = tuple(str(e).strip().lower() for e in expect if str(e).strip())
+        else:
+            raise ConfigError("`os.expect` must be a string or a list of strings")
+        return OsPolicy(expected=expected)
 
     @staticmethod
     def _parse_identity(raw: object) -> Identity:
@@ -158,8 +184,11 @@ class OpsecConfig:
             return Enforcement()
         if not isinstance(raw, Mapping):
             raise ConfigError("`enforcement` must be a mapping")
-        on_command = str(raw.get("on_command", "warn"))
-        auto = str(raw.get("auto_remediate", "safe"))
+        # YAML 1.1 turns bare off/on/no/yes into booleans; map them back so
+        # `auto_remediate: off` behaves as the user obviously intended.
+        bool_words = {True: "on", False: "off"}
+        on_command = str(bool_words.get(raw.get("on_command"), raw.get("on_command", "warn")))
+        auto = str(bool_words.get(raw.get("auto_remediate"), raw.get("auto_remediate", "safe")))
         if on_command not in _ON_COMMAND:
             raise ConfigError(f"enforcement.on_command must be one of {sorted(_ON_COMMAND)}")
         if auto not in _AUTO_REMEDIATE:

@@ -76,7 +76,7 @@ class _LinuxProvider(Provider):
 
 
 class EgressRouteProvider(_LinuxProvider):
-    control_id = "OPSEC-EGRESS-002"
+    control_id = "FLE-EGRESS-002"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -97,7 +97,7 @@ class EgressRouteProvider(_LinuxProvider):
 
 
 class DnsLeakProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-001"
+    control_id = "FLE-NET-001"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -119,7 +119,7 @@ class DnsLeakProvider(_LinuxProvider):
 
 
 class Ipv6LeakProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-002"
+    control_id = "FLE-NET-002"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -141,7 +141,7 @@ class Ipv6LeakProvider(_LinuxProvider):
 
 
 class FirewallPolicyProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-003"
+    control_id = "FLE-NET-003"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -165,7 +165,7 @@ class FirewallPolicyProvider(_LinuxProvider):
 
 
 class ListeningPortsProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-004"
+    control_id = "FLE-NET-004"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -264,7 +264,7 @@ def _public_ip() -> str | None:
 
 
 class EncryptedDnsProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-005"
+    control_id = "FLE-NET-005"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -283,7 +283,7 @@ class EncryptedDnsProvider(_LinuxProvider):
 
 
 class ResolverIsGatewayProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-006"
+    control_id = "FLE-NET-006"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -305,7 +305,7 @@ class ResolverIsGatewayProvider(_LinuxProvider):
 
 
 class LlmnrProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-007"
+    control_id = "FLE-NET-007"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -324,7 +324,7 @@ class LlmnrProvider(_LinuxProvider):
 
 
 class MdnsProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-008"
+    control_id = "FLE-NET-008"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -344,7 +344,7 @@ class MdnsProvider(_LinuxProvider):
 
 
 class Ipv6PrivacyProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-009"
+    control_id = "FLE-NET-009"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -366,7 +366,7 @@ class Ipv6PrivacyProvider(_LinuxProvider):
 
 
 class Ipv6Eui64Provider(_LinuxProvider):
-    control_id = "OPSEC-NET-010"
+    control_id = "FLE-NET-010"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -387,7 +387,7 @@ class Ipv6Eui64Provider(_LinuxProvider):
 
 
 class MacRandomizationProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-011"
+    control_id = "FLE-NET-011"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -409,7 +409,7 @@ class MacRandomizationProvider(_LinuxProvider):
 
 
 class ConnectivityCheckProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-012"
+    control_id = "FLE-NET-012"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -430,7 +430,7 @@ class ConnectivityCheckProvider(_LinuxProvider):
 
 
 class TcpTimestampsProvider(_LinuxProvider):
-    control_id = "OPSEC-NET-013"
+    control_id = "FLE-NET-013"
 
     def observe(self, ctx: ProviderContext):
         na = self._guard(ctx)
@@ -451,7 +451,7 @@ class TcpTimestampsProvider(_LinuxProvider):
 class PublicIpProvider(Provider):
     """Cross-platform egress-IP proof: does the outside world see a forbidden IP?"""
 
-    control_id = "OPSEC-NET-014"
+    control_id = "FLE-NET-014"
 
     def observe(self, ctx: ProviderContext):
         forbidden = {str(ip) for ip in ctx.params.get("forbidden_ips", [])}

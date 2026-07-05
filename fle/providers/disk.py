@@ -1,4 +1,4 @@
-"""OPSEC-DISK-001 — system volume encryption is enabled.
+"""FLE-DISK-001 — system volume encryption is enabled.
 
 Without full-disk encryption, physical access defeats every other control. This
 provider reports a tri-state: encrypted (ok), not encrypted (violation), or
@@ -56,7 +56,7 @@ def _encryption_enabled() -> bool | None:
 
 
 class DiskEncryptionProvider(Provider):
-    control_id = "OPSEC-DISK-001"
+    control_id = "FLE-DISK-001"
 
     def observe(self, ctx: ProviderContext):
         status = _encryption_enabled()

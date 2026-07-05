@@ -1,4 +1,4 @@
-"""OPSEC-SECRET-060 — declared plaintext secret files are absent.
+"""FLE-SECRET-060 — declared plaintext secret files are absent.
 
 Long-lived plaintext credential files (``~/.aws/credentials``, ``~/.netrc``, …)
 are a standing harvest target. This provider fails if any path the config
@@ -20,7 +20,7 @@ def _exists(path: Path) -> bool:
 
 
 class ForbiddenFilesProvider(Provider):
-    control_id = "OPSEC-SECRET-060"
+    control_id = "FLE-SECRET-060"
 
     def observe(self, ctx: ProviderContext):
         declared = list(ctx.params.get("forbidden_paths", []))

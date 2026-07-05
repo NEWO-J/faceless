@@ -8,6 +8,18 @@
   "properties": {
     "opsec_version": { "const": 1 },
     "name": { "type": "string" },
+    "os": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expect": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        }
+      }
+    },
     "identity": {
       "type": "object",
       "additionalProperties": false,
@@ -24,7 +36,7 @@
         "required": ["control"],
         "additionalProperties": false,
         "properties": {
-          "control": { "type": "string", "pattern": "^OPSEC-[A-Z]+-[0-9]+$" },
+          "control": { "type": "string", "pattern": "^FLE-[A-Z]+-[0-9]+$" },
           "severity": { "enum": ["low", "medium", "high", "critical"] },
           "params": { "type": "object" }
         }

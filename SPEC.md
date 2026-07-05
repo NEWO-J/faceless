@@ -24,6 +24,7 @@ Root is a mapping. JSON Schema: [`schema/opsec.schema.json`](schema/opsec.schema
 |-----|----------|---------|
 | `opsec_version` | yes | Must be `1`. |
 | `name` | no | Human label for the posture. |
+| `os.expect` | no | Target OS as a string or list (e.g. `tails`, `whonix-workstation`, or an umbrella like `anonymity`). Consumed by `FLE-OS-001`. |
 | `identity.persona` | no | String map of the operating identity (e.g. `git_name`, `git_email`). |
 | `identity.real` | no | Identifiers that must never leak into persona-scoped state. |
 | `posture` | yes | Non-empty list of control selections. |
@@ -35,7 +36,7 @@ Root is a mapping. JSON Schema: [`schema/opsec.schema.json`](schema/opsec.schema
 
 ## 3. Control catalog
 
-Controls have **stable IDs** in the scheme `OPSEC-<DOMAIN>-<NNN>`. IDs are
+Controls have **stable IDs** in the scheme `FLE-<DOMAIN>-<NNN>`. IDs are
 permanent: once assigned, an ID's meaning does not change; deprecated controls
 are retired, not repurposed. Each control declares a domain, a default severity,
 whether it is remediable, and whether it is *expensive* (too slow for the

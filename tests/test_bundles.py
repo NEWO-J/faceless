@@ -16,7 +16,7 @@ def test_bundle_expands_to_controls():
     })
     ids = [i.control_id for i in cfg.posture]
     assert ids == get_bundle("linux-net")
-    assert "OPSEC-NET-003" in ids
+    assert "FLE-NET-003" in ids
 
 
 def test_bundle_and_explicit_control_dedupe():
@@ -24,11 +24,11 @@ def test_bundle_and_explicit_control_dedupe():
         "opsec_version": 1, "name": "t",
         # explicit-with-params first so it wins over the bundle's default
         "posture": [
-            {"control": "OPSEC-EGRESS-002", "params": {"interface": "wg0"}},
+            {"control": "FLE-EGRESS-002", "params": {"interface": "wg0"}},
             {"bundle": "linux-net"},
         ],
     })
-    egress = [i for i in cfg.posture if i.control_id == "OPSEC-EGRESS-002"]
+    egress = [i for i in cfg.posture if i.control_id == "FLE-EGRESS-002"]
     assert len(egress) == 1
     assert egress[0].params == {"interface": "wg0"}
 

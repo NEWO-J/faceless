@@ -37,7 +37,7 @@ fle hook install    # re-check on every command
 
 - `opsec.yaml` declares your desired posture: an identity (the persona plus the
   real identity to guard against) and a list of controls.
-- Each control has a stable catalog ID (`OPSEC-<DOMAIN>-<NNN>`) and is backed by a
+- Each control has a stable catalog ID (`FLE-<DOMAIN>-<NNN>`) and is backed by a
   provider that observes actual system state.
 - `fle verify` runs the providers and emits a posture report. Each control comes
   back as `ok`, `drift`, `violation`, `not_applicable`, `error`, or `not_enforced`.
@@ -51,6 +51,8 @@ fle hook install    # re-check on every command
 ```yaml
 opsec_version: 1
 name: ghostwriter
+os:
+  expect: whonix-workstation   # string or list; e.g. [tails, whonix-workstation]
 identity:
   persona:
     git_name: ghostwriter
@@ -59,13 +61,13 @@ identity:
     names:  ["Jane Q. Doe"]
     emails: ["jane@personal.example"]
 posture:
-  - control: OPSEC-IDENTITY-101                     # git identity == persona
-  - control: OPSEC-SECRET-050                        # no secrets in the environment
-  - control: OPSEC-SECRET-060
+  - control: FLE-IDENTITY-101                     # git identity == persona
+  - control: FLE-SECRET-050                        # no secrets in the environment
+  - control: FLE-SECRET-060
     params: { forbidden_paths: ["~/.aws/credentials", "~/.netrc"] }
-  - control: OPSEC-EGRESS-001
+  - control: FLE-EGRESS-001
     params: { interface: wg0 }                       # VPN interface present
-  - control: OPSEC-DISK-001                          # volume encryption on
+  - control: FLE-DISK-001                          # volume encryption on
 enforcement:
   on_command: warn            # block | warn | off  (per-command hook behavior)
   auto_remediate: safe        # off | safe | full
@@ -73,17 +75,17 @@ enforcement:
 
 ## Controls
 
-The catalog groups controls by domain under the `OPSEC-<DOMAIN>-<NNN>` scheme.
+The catalog groups controls by domain under the `FLE-<DOMAIN>-<NNN>` scheme.
 
 **Cross-platform**
 
 | ID | Checks | Remediable |
 |----|--------|-----------|
-| `OPSEC-IDENTITY-101` | git identity equals the persona and never the real identity | yes |
-| `OPSEC-SECRET-050` | no secret-like values in the environment | detect-only |
-| `OPSEC-SECRET-060` | declared plaintext secret files are absent | detect-only |
-| `OPSEC-EGRESS-001` | declared VPN interface is present | detect-only |
-| `OPSEC-DISK-001` | system volume encryption is enabled | detect-only |
+| `FLE-IDENTITY-101` | git identity equals the persona and never the real identity | yes |
+| `FLE-SECRET-050` | no secret-like values in the environment | detect-only |
+| `FLE-SECRET-060` | declared plaintext secret files are absent | detect-only |
+| `FLE-EGRESS-001` | declared VPN interface is present | detect-only |
+| `FLE-DISK-001` | system volume encryption is enabled | detect-only |
 
 **Network / egress leaks**
 
@@ -93,38 +95,58 @@ LAN-side broadcast hardening.
 
 | ID | Checks |
 |----|--------|
-| `OPSEC-EGRESS-002` | default route rides the declared VPN interface |
-| `OPSEC-NET-001` | DNS resolvers are all on the allowlist |
-| `OPSEC-NET-002` | IPv6 is disabled or routed through the VPN |
-| `OPSEC-NET-003` | firewall denies by default (kill-switch) |
-| `OPSEC-NET-004` | no unexpected services listening on non-loopback |
-| `OPSEC-NET-005` | DNS is encrypted (DNS-over-TLS) |
-| `OPSEC-NET-006` | resolver is not the LAN gateway (ISP router) |
-| `OPSEC-NET-007` | LLMNR is disabled (no hostname broadcast / hash capture) |
-| `OPSEC-NET-008` | mDNS is not broadcasting the host |
-| `OPSEC-NET-009` | IPv6 privacy extensions are enabled (RFC 8981) |
-| `OPSEC-NET-010` | no MAC-derived (EUI-64) IPv6 address |
-| `OPSEC-NET-011` | Wi-Fi MAC randomization is configured |
-| `OPSEC-NET-012` | captive-portal connectivity check is disabled |
-| `OPSEC-NET-013` | TCP timestamps disabled (no uptime fingerprint) |
-| `OPSEC-NET-014` | public egress IP is not a forbidden (real) address |
+| `FLE-EGRESS-002` | default route rides the declared VPN interface |
+| `FLE-NET-001` | DNS resolvers are all on the allowlist |
+| `FLE-NET-002` | IPv6 is disabled or routed through the VPN |
+| `FLE-NET-003` | firewall denies by default (kill-switch) |
+| `FLE-NET-004` | no unexpected services listening on non-loopback |
+| `FLE-NET-005` | DNS is encrypted (DNS-over-TLS) |
+| `FLE-NET-006` | resolver is not the LAN gateway (ISP router) |
+| `FLE-NET-007` | LLMNR is disabled (no hostname broadcast / hash capture) |
+| `FLE-NET-008` | mDNS is not broadcasting the host |
+| `FLE-NET-009` | IPv6 privacy extensions are enabled (RFC 8981) |
+| `FLE-NET-010` | no MAC-derived (EUI-64) IPv6 address |
+| `FLE-NET-011` | Wi-Fi MAC randomization is configured |
+| `FLE-NET-012` | captive-portal connectivity check is disabled |
+| `FLE-NET-013` | TCP timestamps disabled (no uptime fingerprint) |
+| `FLE-NET-014` | public egress IP is not a forbidden (real) address |
 
-`OPSEC-NET-014` is the definitive leak proof: it fetches your public IP and
+`FLE-NET-014` is the definitive leak proof: it fetches your public IP and
 fails if the outside world sees an address you flagged as real. It's opt-in
 (declare `forbidden_ips`) and makes a network call, so it runs only when asked.
 Everything else is passive and offline. Linux-specific controls report
 `not_applicable` on other platforms, so one config runs cleanly everywhere.
+
+**Operating-system target**
+
+| ID | Checks |
+|----|--------|
+| `FLE-OS-001` | the running OS matches the `os.expect` you declared |
+
+Declare a target OS and `FLE-OS-001` fails if you're not on it. It knows the
+anonymity systems the community uses, so `expect: whonix-workstation` catches you
+firing up sensitive work on the host or the Gateway by mistake. Detected values
+include `tails`, `whonix-gateway`, `whonix-workstation`, `qubes`, ordinary distro
+ids (`debian`, `ubuntu`, ...), `windows`, and `macos`. Umbrella terms work too:
+`whonix` matches either Whonix VM, `anonymity` matches Tails/Whonix/Qubes, and
+`linux` matches any distro.
 
 ### Bundles
 
 Pull a whole domain in with one line instead of listing each control:
 
 ```yaml
+os:
+  expect: whonix-workstation
 posture:
-  - bundle: linux-net        # OPSEC-EGRESS-001/002 + OPSEC-NET-001..004
-  - control: OPSEC-EGRESS-002 # also list a control to pass params
+  - bundle: whonix           # FLE-OS-001 + anonymity-OS leak checks
+  - bundle: linux-net        # FLE-EGRESS-001/002 + FLE-NET-001..013
+  - control: FLE-EGRESS-002 # also list a control to pass params
     params: { interface: wg0 }
 ```
+
+Bundles `tails` and `whonix` verify the OS plus the leak checks that matter most
+on an amnesic system (IPv6 off, no MAC-derived address, MAC randomization).
 
 See [`SPEC.md`](SPEC.md) for the full standard: schema, catalog, conformance, and
 report format. The JSON Schemas live in [`schema/`](schema/).

@@ -1,4 +1,4 @@
-"""OPSEC-SECRET-050 — no secret-like values in the environment.
+"""FLE-SECRET-050 — no secret-like values in the environment.
 
 Secrets in environment variables leak into every child process, crash dump, and
 CI log. This provider scans the *values* of the current environment for
@@ -36,7 +36,7 @@ def _get_environ() -> Mapping[str, str]:
 
 
 class EnvironmentSecretProvider(Provider):
-    control_id = "OPSEC-SECRET-050"
+    control_id = "FLE-SECRET-050"
 
     def observe(self, ctx: ProviderContext):
         allow = {str(n) for n in ctx.params.get("allow", [])}

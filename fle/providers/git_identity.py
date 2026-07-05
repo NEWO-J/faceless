@@ -1,4 +1,4 @@
-"""OPSEC-IDENTITY-101 — git identity matches persona, never the real identity.
+"""FLE-IDENTITY-101 — git identity matches persona, never the real identity.
 
 The classic pseudonymity leak: you set up a persona once, then a tired late-night
 commit goes out under your real name because git config drifted back. This
@@ -44,7 +44,7 @@ def _git_set(key: str, value: str) -> None:
 
 
 class GitIdentityProvider(Provider):
-    control_id = "OPSEC-IDENTITY-101"
+    control_id = "FLE-IDENTITY-101"
 
     def _observed(self) -> dict[str, str]:
         return {
