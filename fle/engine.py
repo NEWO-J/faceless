@@ -10,10 +10,18 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Mapping
 
-from .catalog import get_control
 from .config import OpsecConfig
+from .custom import CUSTOM_PROVIDER
 from .model import CheckResult, PostureReport, Severity, State
 from .providers import ProviderContext, get_provider, load_builtin_providers
+
+
+def _resolve_provider(config: OpsecConfig, control_id: str):
+    """Built-in provider, or the shared custom-check provider for YAML controls."""
+    provider = get_provider(control_id)
+    if provider is None and control_id in config.custom_controls:
+        return CUSTOM_PROVIDER
+    return provider
 
 
 def _not_enforced(control_id: str, severity: Severity, summary: str) -> CheckResult:
@@ -51,8 +59,8 @@ def evaluate(
     results: list[CheckResult] = []
 
     for item in config.posture:
-        spec = get_control(item.control_id)
-        provider = get_provider(item.control_id)
+        spec = config.spec_for(item.control_id)
+        provider = _resolve_provider(config, item.control_id)
         if provider is None:
             results.append(_not_enforced(item.control_id, item.severity, "no provider registered"))
             continue
@@ -93,10 +101,10 @@ def converge(config: OpsecConfig, report: PostureReport, *, full: bool = False) 
         if not (result.failing and result.remediable):
             continue
         item = next((i for i in config.posture if i.control_id == result.control_id), None)
-        provider = get_provider(result.control_id)
+        provider = _resolve_provider(config, result.control_id)
         if item is None or provider is None:
             continue
-        spec = get_control(result.control_id)
+        spec = config.spec_for(result.control_id)
         ctx = ProviderContext(config=config, item=item, spec=spec)
         try:
             outcomes.append(provider.enforce(ctx))

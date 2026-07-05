@@ -108,7 +108,22 @@ under `on_command: block`, best-effort refuses to submit a command while
 non-conformant. On the fast path only the `safe` (reversible) remediation subset
 may run automatically; `full` remediation is confined to an explicit `apply`.
 
-## 9. Attestation
+## 9. Custom controls
+
+A config may define its own controls under a top-level `controls:` list, so the
+catalog is open-ended without code. Each entry has an `id` (matching
+`FLE-<DOMAIN>-<NNN>` and not colliding with a built-in control), a `kind`
+(`command`, `file`, `env`, or `sysctl`), the kind's fields, an `assert` block,
+and an optional `severity`/`domain`/`rationale`.
+
+Assertions are content predicates (`equals`, `contains`, `matches`, `min`,
+`max`), presence predicates for `file`/`env` (`exists`, `absent`), or `exit_zero`
+for `command`. When several are present, all must hold. A custom control produces
+the same `CheckResult` states as a built-in one and participates in conformance
+identically. Custom controls are detect-only; remediation requires a Python
+provider.
+
+## 10. Attestation
 
 A posture report can be turned into a portable, verifiable credential so a
 remote party (a chat room, a team, an access gateway) can require conformance
@@ -133,7 +148,7 @@ mechanism is therefore a cooperative control: it enforces a shared baseline,
 catches honest drift, and proves freshness. It is not evidence against a
 motivated adversary. Implementations MUST NOT present it as such.
 
-## 10. Versioning
+## 11. Versioning
 
 `opsec_version` gates breaking changes to the config/report shapes. New controls
 and new domains are additive and do not bump the version. Removing or

@@ -49,6 +49,28 @@
         "on_command": { "enum": ["block", "warn", "off"] },
         "auto_remediate": { "enum": ["off", "safe", "full"] }
       }
+    },
+    "controls": {
+      "type": "array",
+      "description": "User-defined declarative controls (no Python).",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "assert"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^FLE-[A-Z0-9]+-[0-9]+$" },
+          "title": { "type": "string" },
+          "kind": { "enum": ["command", "file", "env", "sysctl"] },
+          "severity": { "enum": ["low", "medium", "high", "critical"] },
+          "domain": { "type": "string" },
+          "rationale": { "type": "string" },
+          "run": { "type": "array", "items": { "type": "string" } },
+          "timeout": { "type": "number" },
+          "path": { "type": "string" },
+          "var": { "type": "string" },
+          "key": { "type": "string" },
+          "assert": { "type": "object", "minProperties": 1 }
+        }
+      }
     }
   }
 }

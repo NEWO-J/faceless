@@ -216,11 +216,45 @@ and misconfiguration, and proves freshness. It does not stop a determined liar.
 Defeating that needs hardware attestation (TPM measured boot), which fle does not
 attempt.
 
-## Extending
+## Custom controls (no Python)
 
-Add a control by writing a provider: subclass `fle.providers.base.Provider`,
-implement `observe()` (and `enforce()` if remediable), register it, and add a
-catalog entry in `fle/catalog.py`. That is the only extension point.
+Most checks are "run X, assert Y." You can define those directly in `opsec.yaml`
+under `controls:`, no code required, and reference them in `posture` alongside
+the built-in ones:
+
+```yaml
+controls:
+  - id: FLE-CUSTOM-001
+    title: Screen locks after 5 minutes idle
+    kind: command                       # command | file | env | sysctl
+    run: ["gsettings", "get", "org.gnome.desktop.session", "idle-delay"]
+    assert: { max: 300 }
+    severity: medium
+
+  - id: FLE-CUSTOM-002
+    title: No unencrypted SSH key on disk
+    kind: file
+    path: ~/.ssh/id_rsa
+    assert: { absent: true }
+
+posture:
+  - control: FLE-CUSTOM-001
+  - control: FLE-CUSTOM-002
+  - bundle: linux-net                    # mix custom and built-in freely
+```
+
+Kinds and their fields: `command` (`run:` list, optional `timeout`), `file`
+(`path:`), `env` (`var:`), `sysctl` (`key:`). Assertions: `equals`, `contains`,
+`matches` (regex), `min`, `max` (numeric), `exists`/`absent` (file/env),
+`exit_zero` (command). Custom ids must follow the `FLE-<DOMAIN>-<NNN>` scheme and
+cannot collide with a built-in. They count toward conformance like any other
+control.
+
+## Extending with Python
+
+For anything the declarative kinds can't express, write a provider: subclass
+`fle.providers.base.Provider`, implement `observe()` (and `enforce()` if
+remediable), register it, and add a catalog entry in `fle/catalog.py`.
 
 ## Tests
 

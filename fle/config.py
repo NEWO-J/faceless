@@ -6,13 +6,14 @@ Fail-closed: a missing, malformed, or under-specified config raises
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
 
-from .catalog import get_bundle, get_control
+from .catalog import CATALOG, ControlSpec, get_bundle, get_control
 from .errors import ConfigError
 from .model import Severity
 
@@ -21,6 +22,31 @@ DEFAULT_LOCK_NAME = "opsec.lock.yaml"
 
 _ON_COMMAND = {"block", "warn", "off"}
 _AUTO_REMEDIATE = {"off", "safe", "full"}
+
+_CUSTOM_ID_RE = re.compile(r"^FLE-[A-Z0-9]+-[0-9]+$")
+_CUSTOM_KINDS = {"command", "file", "env", "sysctl"}
+
+
+def _custom_spec(cid: str, kind: str, entry: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and extract the kind-specific fields for a custom control."""
+    if kind == "command":
+        run = entry.get("run")
+        if not isinstance(run, (list, tuple)) or not run:
+            raise ConfigError(f"{cid}: a `command` control needs a non-empty `run` list")
+        return {"run": list(run), "timeout": entry.get("timeout", 20)}
+    if kind == "file":
+        if not entry.get("path"):
+            raise ConfigError(f"{cid}: a `file` control needs a `path`")
+        return {"path": str(entry["path"])}
+    if kind == "env":
+        if not entry.get("var"):
+            raise ConfigError(f"{cid}: an `env` control needs a `var`")
+        return {"var": str(entry["var"])}
+    if kind == "sysctl":
+        if not entry.get("key"):
+            raise ConfigError(f"{cid}: a `sysctl` control needs a `key`")
+        return {"key": str(entry["key"])}
+    raise ConfigError(f"{cid}: unsupported kind {kind!r}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +80,26 @@ class OsPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class CustomControl:
+    """A user-defined control declared in YAML (no Python)."""
+
+    id: str
+    title: str
+    kind: str
+    severity: Severity
+    domain: str = "custom"
+    rationale: str = ""
+    spec: Mapping[str, Any] = field(default_factory=dict)
+    assertion: Mapping[str, Any] = field(default_factory=dict)
+
+    def control_spec(self) -> ControlSpec:
+        return ControlSpec(
+            id=self.id, domain=self.domain, title=self.title,
+            default_severity=self.severity, remediable=False, rationale=self.rationale,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class Enforcement:
     on_command: str = "warn"
     auto_remediate: str = "safe"
@@ -66,7 +112,15 @@ class OpsecConfig:
     posture: tuple[PostureItem, ...]
     enforcement: Enforcement
     os_policy: OsPolicy = field(default_factory=OsPolicy)
+    custom_controls: Mapping[str, CustomControl] = field(default_factory=dict)
     source: Path | None = None
+
+    def spec_for(self, control_id: str) -> ControlSpec:
+        """Resolve a control's spec from custom definitions or the built-in catalog."""
+        custom = self.custom_controls.get(control_id)
+        if custom is not None:
+            return custom.control_spec()
+        return get_control(control_id)
 
     @classmethod
     def from_file(cls, path: str | Path) -> "OpsecConfig":
@@ -86,6 +140,7 @@ class OpsecConfig:
             posture=config.posture,
             enforcement=config.enforcement,
             os_policy=config.os_policy,
+            custom_controls=config.custom_controls,
             source=config_path,
         )
 
@@ -99,11 +154,47 @@ class OpsecConfig:
 
         name = str(document.get("name") or "opsec")
         identity = cls._parse_identity(document.get("identity", {}))
-        posture = cls._parse_posture(document.get("posture", []))
+        custom = cls._parse_custom_controls(document.get("controls", []))
+        posture = cls._parse_posture(document.get("posture", []), custom)
         enforcement = cls._parse_enforcement(document.get("enforcement", {}))
         os_policy = cls._parse_os(document.get("os", {}))
         return cls(name=name, identity=identity, posture=posture,
-                   enforcement=enforcement, os_policy=os_policy)
+                   enforcement=enforcement, os_policy=os_policy, custom_controls=custom)
+
+    @staticmethod
+    def _parse_custom_controls(raw: object) -> dict[str, CustomControl]:
+        if not raw:
+            return {}
+        if not isinstance(raw, (list, tuple)):
+            raise ConfigError("`controls` must be a list of custom control definitions")
+        out: dict[str, CustomControl] = {}
+        for entry in raw:
+            if not isinstance(entry, Mapping):
+                raise ConfigError("each custom control must be a mapping")
+            cid = str(entry.get("id", "")).strip()
+            if not _CUSTOM_ID_RE.match(cid):
+                raise ConfigError(f"custom control id {cid!r} must match FLE-<DOMAIN>-<NNN>")
+            if cid in CATALOG:
+                raise ConfigError(f"custom control {cid} collides with a built-in control")
+            if cid in out:
+                raise ConfigError(f"duplicate custom control {cid}")
+            kind = str(entry.get("kind", "")).strip()
+            if kind not in _CUSTOM_KINDS:
+                raise ConfigError(f"{cid}: kind must be one of {sorted(_CUSTOM_KINDS)}")
+            assertion = entry.get("assert", {})
+            if not isinstance(assertion, Mapping) or not assertion:
+                raise ConfigError(f"{cid}: `assert` must be a non-empty mapping")
+            try:
+                severity = Severity(str(entry.get("severity", "medium")))
+            except ValueError as exc:
+                raise ConfigError(f"{cid}: bad severity {entry.get('severity')!r}") from exc
+            spec = _custom_spec(cid, kind, entry)
+            out[cid] = CustomControl(
+                id=cid, title=str(entry.get("title") or cid), kind=kind, severity=severity,
+                domain=str(entry.get("domain", "custom")).lower(),
+                rationale=str(entry.get("rationale", "")), spec=spec, assertion=dict(assertion),
+            )
+        return out
 
     # -- parsers -----------------------------------------------------------
 
@@ -135,11 +226,20 @@ class OpsecConfig:
         return Identity(persona={str(k): str(v) for k, v in persona.items()}, real=dict(real))
 
     @staticmethod
-    def _parse_posture(raw: object) -> tuple[PostureItem, ...]:
+    def _parse_posture(
+        raw: object, custom: Mapping[str, "CustomControl"] | None = None
+    ) -> tuple[PostureItem, ...]:
+        custom = custom or {}
         if not isinstance(raw, (list, tuple)) or not raw:
             raise ConfigError("`posture` must be a non-empty list of controls")
         items: list[PostureItem] = []
         seen: set[str] = set()
+
+        def default_severity(control_id: str) -> Severity:
+            if control_id in custom:
+                return custom[control_id].severity
+            return get_control(control_id).default_severity  # validates existence
+
         for entry in raw:
             if not isinstance(entry, Mapping):
                 raise ConfigError("each posture item must be a mapping")
@@ -152,7 +252,7 @@ class OpsecConfig:
                     seen.add(control_id)
                     items.append(PostureItem(
                         control_id=control_id,
-                        severity=get_control(control_id).default_severity,
+                        severity=default_severity(control_id),
                         params={},
                     ))
                 continue
@@ -160,11 +260,10 @@ class OpsecConfig:
             if "control" not in entry:
                 raise ConfigError("each posture item needs a `control` or `bundle` key")
             control_id = str(entry["control"])
-            spec = get_control(control_id)  # validates existence
+            severity = default_severity(control_id)  # validates builtin/custom existence
             if control_id in seen:
                 raise ConfigError(f"duplicate control {control_id!r} in posture")
             seen.add(control_id)
-            severity = spec.default_severity
             if "severity" in entry:
                 try:
                     severity = Severity(str(entry["severity"]))
