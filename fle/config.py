@@ -1,9 +1,3 @@
-"""Load and validate the declarative desired-state config (``opsec.yaml``).
-
-Fail-closed: a missing, malformed, or under-specified config raises
-:class:`~fle.errors.ConfigError` rather than degrading to "check nothing".
-"""
-
 from __future__ import annotations
 
 import re
