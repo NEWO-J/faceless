@@ -71,15 +71,54 @@ enforcement:
   auto_remediate: safe        # off | safe | full
 ```
 
-## Controls (v1 catalog)
+## Controls
+
+The catalog groups controls by domain under the `OPSEC-<DOMAIN>-<NNN>` scheme.
+
+**Cross-platform**
 
 | ID | Checks | Remediable |
 |----|--------|-----------|
 | `OPSEC-IDENTITY-101` | git identity equals the persona and never the real identity | yes |
 | `OPSEC-SECRET-050` | no secret-like values in the environment | detect-only |
 | `OPSEC-SECRET-060` | declared plaintext secret files are absent | detect-only |
-| `OPSEC-EGRESS-001` | declared VPN interface is present (tunnel up) | detect-only |
+| `OPSEC-EGRESS-001` | declared VPN interface is present | detect-only |
 | `OPSEC-DISK-001` | system volume encryption is enabled | detect-only |
+
+**Network / egress leaks (Linux)**
+
+| ID | Checks |
+|----|--------|
+| `OPSEC-EGRESS-002` | default route rides the declared VPN interface |
+| `OPSEC-NET-001` | DNS resolvers are all on the allowlist (no ISP-DNS leak) |
+| `OPSEC-NET-002` | IPv6 is disabled or routed through the VPN |
+| `OPSEC-NET-003` | firewall denies by default (kill-switch) |
+| `OPSEC-NET-004` | no unexpected services listening on non-loopback |
+
+**System hardening / privesc (Linux)**
+
+| ID | Checks |
+|----|--------|
+| `OPSEC-PRIV-001` | no known-exploitable SUID binaries |
+| `OPSEC-PRIV-002` | sudo requires a password (no NOPASSWD) |
+| `OPSEC-PRIV-003` | no user-writable directories in PATH |
+| `OPSEC-PRIV-004` | SSH does not permit direct root login |
+| `OPSEC-PRIV-005` | ptrace scope hardening is enabled |
+
+Linux controls report `not_applicable` on other platforms, so one config runs
+cleanly everywhere.
+
+### Bundles
+
+Pull a whole domain in with one line instead of listing each control:
+
+```yaml
+posture:
+  - bundle: linux-net        # OPSEC-EGRESS-001/002 + OPSEC-NET-001..004
+  - bundle: linux-privesc    # OPSEC-PRIV-001..005
+  - control: OPSEC-EGRESS-002 # also list a control to pass params
+    params: { interface: wg0 }
+```
 
 See [`SPEC.md`](SPEC.md) for the full standard: schema, catalog, conformance, and
 report format. The JSON Schemas live in [`schema/`](schema/).

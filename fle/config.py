@@ -12,7 +12,7 @@ from typing import Any, Mapping
 
 import yaml
 
-from .catalog import get_control
+from .catalog import get_bundle, get_control
 from .errors import ConfigError
 from .model import Severity
 
@@ -115,8 +115,24 @@ class OpsecConfig:
         items: list[PostureItem] = []
         seen: set[str] = set()
         for entry in raw:
-            if not isinstance(entry, Mapping) or "control" not in entry:
-                raise ConfigError("each posture item needs a `control` key")
+            if not isinstance(entry, Mapping):
+                raise ConfigError("each posture item must be a mapping")
+
+            # A bundle expands to its controls with default severity / no params.
+            if "bundle" in entry:
+                for control_id in get_bundle(str(entry["bundle"])):
+                    if control_id in seen:
+                        continue
+                    seen.add(control_id)
+                    items.append(PostureItem(
+                        control_id=control_id,
+                        severity=get_control(control_id).default_severity,
+                        params={},
+                    ))
+                continue
+
+            if "control" not in entry:
+                raise ConfigError("each posture item needs a `control` or `bundle` key")
             control_id = str(entry["control"])
             spec = get_control(control_id)  # validates existence
             if control_id in seen:

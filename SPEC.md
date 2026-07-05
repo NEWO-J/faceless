@@ -44,7 +44,12 @@ per-command fast path, therefore cached).
 Severity ordering: `low < medium < high < critical`.
 
 v1 controls: see [`fle/catalog.py`](fle/catalog.py). Domains in use: `identity`,
-`secret`, `egress`, `disk`.
+`secret`, `egress`, `net`, `disk`, `privesc`.
+
+A **bundle** is a named list of control IDs (for example `linux-net`,
+`linux-privesc`). A `posture` entry of `{bundle: <name>}` expands to those
+controls with their default severity. Bundles are ergonomic sugar over
+selecting controls individually; they do not change the model.
 
 ## 4. Provider contract
 
