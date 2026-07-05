@@ -1,19 +1,3 @@
-"""Posture attestation: turn a verify result into a signed, verifiable token.
-
-A room publishes a required ``opsec.yaml``. A member runs ``fle attest`` against
-it, producing an Ed25519-signed token that says "my machine is conformant to
-*this exact baseline*, right now." A gatekeeper verifies the signature,
-conformance, baseline hash, and freshness before letting them in.
-
-Trust model (read this): the report is **self-attested**. A patched client can
-forge conformance. This is a *cooperative* control that catches honest drift and
-misconfiguration and pins freshness; it is not proof against a determined liar.
-Hardware attestation (TPM measured boot) would be required for that, and is out
-of scope. The token deliberately carries per-control pass/fail but never the
-observed values, so members prove conformance without leaking evidence (IPs,
-paths, resolvers) to the room.
-"""
-
 from __future__ import annotations
 
 import base64
