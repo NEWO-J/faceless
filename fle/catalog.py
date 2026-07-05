@@ -105,37 +105,66 @@ CATALOG: dict[str, ControlSpec] = {
         rationale="Every exposed port is attack surface and a potential fingerprint.",
         expensive=True,
     ),
-    # -- System hardening / privesc (Linux) --------------------------------
-    "OPSEC-PRIV-001": ControlSpec(
-        id="OPSEC-PRIV-001", domain="privesc",
-        title="No known-exploitable SUID binaries",
-        default_severity=Severity.HIGH, remediable=False,
-        rationale="SUID GTFOBins hand a local attacker an easy root shell.",
-        expensive=True,
-    ),
-    "OPSEC-PRIV-002": ControlSpec(
-        id="OPSEC-PRIV-002", domain="privesc",
-        title="sudo requires a password (no NOPASSWD)",
-        default_severity=Severity.HIGH, remediable=False,
-        rationale="NOPASSWD turns any stolen session into instant root.",
-    ),
-    "OPSEC-PRIV-003": ControlSpec(
-        id="OPSEC-PRIV-003", domain="privesc",
-        title="No user-writable directories in PATH",
-        default_severity=Severity.HIGH, remediable=False,
-        rationale="A writable PATH dir lets an attacker shadow a trusted command.",
-    ),
-    "OPSEC-PRIV-004": ControlSpec(
-        id="OPSEC-PRIV-004", domain="privesc",
-        title="SSH does not permit direct root login",
-        default_severity=Severity.HIGH, remediable=False,
-        rationale="Direct root login removes the audit trail and invites brute force.",
-    ),
-    "OPSEC-PRIV-005": ControlSpec(
-        id="OPSEC-PRIV-005", domain="privesc",
-        title="ptrace scope hardening is enabled",
+    "OPSEC-NET-005": ControlSpec(
+        id="OPSEC-NET-005", domain="net",
+        title="DNS is encrypted (DNS-over-TLS)",
         default_severity=Severity.MEDIUM, remediable=False,
-        rationale="ptrace_scope=0 lets any process read another's memory, including secrets.",
+        rationale="Cleartext DNS lets the resolver and every hop log what you look up.",
+    ),
+    "OPSEC-NET-006": ControlSpec(
+        id="OPSEC-NET-006", domain="net",
+        title="Resolver is not the LAN gateway (ISP router)",
+        default_severity=Severity.HIGH, remediable=False,
+        rationale="Using the router's DNS hands your full browsing history to the ISP.",
+    ),
+    "OPSEC-NET-007": ControlSpec(
+        id="OPSEC-NET-007", domain="net",
+        title="LLMNR is disabled",
+        default_severity=Severity.HIGH, remediable=False,
+        rationale="LLMNR broadcasts your hostname and enables Responder-style hash capture.",
+    ),
+    "OPSEC-NET-008": ControlSpec(
+        id="OPSEC-NET-008", domain="net",
+        title="mDNS is not broadcasting the host",
+        default_severity=Severity.MEDIUM, remediable=False,
+        rationale="Avahi/mDNS advertises your device name and services to the whole LAN.",
+    ),
+    "OPSEC-NET-009": ControlSpec(
+        id="OPSEC-NET-009", domain="net",
+        title="IPv6 privacy extensions are enabled",
+        default_severity=Severity.MEDIUM, remediable=False,
+        rationale="A stable IPv6 interface ID tracks you across every network you join.",
+    ),
+    "OPSEC-NET-010": ControlSpec(
+        id="OPSEC-NET-010", domain="net",
+        title="No MAC-derived (EUI-64) IPv6 address",
+        default_severity=Severity.HIGH, remediable=False,
+        rationale="An EUI-64 address embeds your MAC, a permanent hardware fingerprint.",
+    ),
+    "OPSEC-NET-011": ControlSpec(
+        id="OPSEC-NET-011", domain="net",
+        title="Wi-Fi MAC randomization is configured",
+        default_severity=Severity.MEDIUM, remediable=False,
+        rationale="A static MAC lets networks and trackers follow your device between locations.",
+    ),
+    "OPSEC-NET-012": ControlSpec(
+        id="OPSEC-NET-012", domain="net",
+        title="Captive-portal connectivity check is disabled",
+        default_severity=Severity.MEDIUM, remediable=False,
+        rationale="NetworkManager pings a check URL on every join, phoning home your presence.",
+    ),
+    "OPSEC-NET-013": ControlSpec(
+        id="OPSEC-NET-013", domain="net",
+        title="TCP timestamps are disabled",
+        default_severity=Severity.LOW, remediable=False,
+        rationale="TCP timestamps leak system uptime, a passive fingerprint.",
+    ),
+    "OPSEC-NET-014": ControlSpec(
+        id="OPSEC-NET-014", domain="net",
+        title="Public egress IP is not a forbidden (real) address",
+        default_severity=Severity.CRITICAL, remediable=False,
+        rationale="The definitive leak test: prove the outside world does not see your real IP.",
+        expensive=True,
     ),
 }
 
@@ -145,10 +174,9 @@ BUNDLES: dict[str, list[str]] = {
     "linux-net": [
         "OPSEC-EGRESS-001", "OPSEC-EGRESS-002",
         "OPSEC-NET-001", "OPSEC-NET-002", "OPSEC-NET-003", "OPSEC-NET-004",
-    ],
-    "linux-privesc": [
-        "OPSEC-PRIV-001", "OPSEC-PRIV-002", "OPSEC-PRIV-003",
-        "OPSEC-PRIV-004", "OPSEC-PRIV-005",
+        "OPSEC-NET-005", "OPSEC-NET-006", "OPSEC-NET-007", "OPSEC-NET-008",
+        "OPSEC-NET-009", "OPSEC-NET-010", "OPSEC-NET-011", "OPSEC-NET-012",
+        "OPSEC-NET-013",
     ],
 }
 

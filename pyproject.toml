@@ -12,10 +12,12 @@ license = { text = "MIT" }
 dependencies = [
     "PyYAML>=6.0",
     "rich>=13.0",
+    "cryptography>=41.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+attest = ["cryptography>=41.0"]
 
 [project.scripts]
 fle = "fle.cli:main"

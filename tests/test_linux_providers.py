@@ -1,4 +1,4 @@
-"""Linux network + privesc providers against mocked system state."""
+"""Linux network providers against mocked system state."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import pytest
 from fle.catalog import get_control
 from fle.config import OpsecConfig
 from fle.model import State
-from fle.providers import hardening, linux, network
+from fle.providers import linux, network
 from fle.providers.base import ProviderContext
 
 
@@ -22,8 +22,6 @@ def _ctx(control_id, params=None):
     cfg = OpsecConfig.from_mapping(doc)
     return ProviderContext(cfg, cfg.posture[0], get_control(control_id))
 
-
-# -- network ---------------------------------------------------------------
 
 def test_egress_route_ok(monkeypatch):
     monkeypatch.setattr(network, "_default_route_iface", lambda v6=False: "wg0")
@@ -73,49 +71,87 @@ def test_listening_ports(monkeypatch):
     assert r.state is State.VIOLATION and "8080" in r.observed["listening"]
 
 
-# -- privesc ---------------------------------------------------------------
-
-def test_dangerous_suid(monkeypatch):
-    monkeypatch.setattr(hardening, "_suid_binaries", lambda: ["/usr/bin/find", "/usr/bin/passwd"])
-    r = hardening.DangerousSuidProvider().observe(_ctx("OPSEC-PRIV-001"))
-    assert r.state is State.VIOLATION and "find" in r.observed["dangerous_suid"]
-
-
-def test_suid_allowlisted(monkeypatch):
-    monkeypatch.setattr(hardening, "_suid_binaries", lambda: ["/usr/bin/find"])
-    ctx = _ctx("OPSEC-PRIV-001", {"allow_suid": ["/usr/bin/find"]})
-    assert hardening.DangerousSuidProvider().observe(ctx).state is State.OK
-
-
-def test_sudo_nopasswd(monkeypatch):
-    monkeypatch.setattr(hardening, "_sudo_nopasswd", lambda: True)
-    assert hardening.SudoNoPasswdProvider().observe(_ctx("OPSEC-PRIV-002")).state is State.VIOLATION
-    monkeypatch.setattr(hardening, "_sudo_nopasswd", lambda: False)
-    assert hardening.SudoNoPasswdProvider().observe(_ctx("OPSEC-PRIV-002")).state is State.OK
-
-
-def test_writable_path(monkeypatch):
-    monkeypatch.setattr(hardening, "_writable_path_dirs", lambda: ["/tmp/evil"])
-    assert hardening.WritablePathProvider().observe(_ctx("OPSEC-PRIV-003")).state is State.VIOLATION
-    monkeypatch.setattr(hardening, "_writable_path_dirs", lambda: [])
-    assert hardening.WritablePathProvider().observe(_ctx("OPSEC-PRIV-003")).state is State.OK
-
-
-def test_ssh_root_login(monkeypatch):
-    monkeypatch.setattr(hardening, "_sshd_config", lambda: {"permitrootlogin": "yes"})
-    assert hardening.SshRootLoginProvider().observe(_ctx("OPSEC-PRIV-004")).state is State.VIOLATION
-    monkeypatch.setattr(hardening, "_sshd_config", lambda: {"permitrootlogin": "no"})
-    assert hardening.SshRootLoginProvider().observe(_ctx("OPSEC-PRIV-004")).state is State.OK
-
-
-def test_ptrace_scope(monkeypatch):
-    monkeypatch.setattr(hardening, "_ptrace_scope", lambda: 0)
-    assert hardening.PtraceScopeProvider().observe(_ctx("OPSEC-PRIV-005")).state is State.VIOLATION
-    monkeypatch.setattr(hardening, "_ptrace_scope", lambda: 1)
-    assert hardening.PtraceScopeProvider().observe(_ctx("OPSEC-PRIV-005")).state is State.OK
-
-
 def test_non_linux_is_not_applicable(monkeypatch):
     monkeypatch.setattr(linux, "on_linux", lambda: False)
-    r = hardening.PtraceScopeProvider().observe(_ctx("OPSEC-PRIV-005"))
+    r = network.FirewallPolicyProvider().observe(_ctx("OPSEC-NET-003"))
     assert r.state is State.NOT_APPLICABLE
+
+
+# -- deep network controls -------------------------------------------------
+
+def test_encrypted_dns(monkeypatch):
+    monkeypatch.setattr(network, "_resolved_protocol", lambda f: {"DNSOverTLS": True}.get(f))
+    assert network.EncryptedDnsProvider().observe(_ctx("OPSEC-NET-005")).state is State.OK
+    monkeypatch.setattr(network, "_resolved_protocol", lambda f: {"DNSOverTLS": False}.get(f))
+    assert network.EncryptedDnsProvider().observe(_ctx("OPSEC-NET-005")).state is State.VIOLATION
+
+
+def test_resolver_is_gateway(monkeypatch):
+    monkeypatch.setattr(network, "_default_gateway", lambda: "192.168.1.1")
+    monkeypatch.setattr(network, "_nameservers", lambda: ["192.168.1.1"])
+    assert network.ResolverIsGatewayProvider().observe(_ctx("OPSEC-NET-006")).state is State.VIOLATION
+    monkeypatch.setattr(network, "_nameservers", lambda: ["10.64.0.1"])
+    assert network.ResolverIsGatewayProvider().observe(_ctx("OPSEC-NET-006")).state is State.OK
+
+
+def test_llmnr(monkeypatch):
+    monkeypatch.setattr(network, "_resolved_protocol", lambda f: True if f == "LLMNR" else None)
+    assert network.LlmnrProvider().observe(_ctx("OPSEC-NET-007")).state is State.VIOLATION
+    monkeypatch.setattr(network, "_resolved_protocol", lambda f: False if f == "LLMNR" else None)
+    assert network.LlmnrProvider().observe(_ctx("OPSEC-NET-007")).state is State.OK
+
+
+def test_mdns_broadcasting(monkeypatch):
+    monkeypatch.setattr(network, "_resolved_protocol", lambda f: None)
+    monkeypatch.setattr(network, "_service_active", lambda n: True)
+    assert network.MdnsProvider().observe(_ctx("OPSEC-NET-008")).state is State.VIOLATION
+    monkeypatch.setattr(network, "_service_active", lambda n: False)
+    assert network.MdnsProvider().observe(_ctx("OPSEC-NET-008")).state is State.OK
+
+
+def test_ipv6_privacy(monkeypatch):
+    monkeypatch.setattr(network, "_ipv6_disabled", lambda: False)
+    monkeypatch.setattr(network, "_use_tempaddr", lambda: 2)
+    assert network.Ipv6PrivacyProvider().observe(_ctx("OPSEC-NET-009")).state is State.OK
+    monkeypatch.setattr(network, "_use_tempaddr", lambda: 0)
+    assert network.Ipv6PrivacyProvider().observe(_ctx("OPSEC-NET-009")).state is State.VIOLATION
+
+
+def test_ipv6_eui64_leak(monkeypatch):
+    monkeypatch.setattr(network, "_global_ipv6_addrs", lambda: ["2001:db8::211:22ff:fe33:4455"])
+    assert network.Ipv6Eui64Provider().observe(_ctx("OPSEC-NET-010")).state is State.VIOLATION
+    monkeypatch.setattr(network, "_global_ipv6_addrs", lambda: ["2001:db8::dead:beef:cafe:1234"])
+    assert network.Ipv6Eui64Provider().observe(_ctx("OPSEC-NET-010")).state is State.OK
+
+
+def test_mac_randomization(monkeypatch):
+    monkeypatch.setattr(network, "_nm_print_config",
+                        lambda: "wifi.scan-rand-mac-address=yes\ncloned-mac-address=random\n")
+    assert network.MacRandomizationProvider().observe(_ctx("OPSEC-NET-011")).state is State.OK
+    monkeypatch.setattr(network, "_nm_print_config", lambda: "wifi.powersave=2\n")
+    assert network.MacRandomizationProvider().observe(_ctx("OPSEC-NET-011")).state is State.VIOLATION
+
+
+def test_connectivity_check(monkeypatch):
+    monkeypatch.setattr(network, "_nm_print_config", lambda: "[connectivity]\nenabled=false\n")
+    assert network.ConnectivityCheckProvider().observe(_ctx("OPSEC-NET-012")).state is State.OK
+    monkeypatch.setattr(network, "_nm_print_config", lambda: "[connectivity]\nuri=http://x/check\n")
+    assert network.ConnectivityCheckProvider().observe(_ctx("OPSEC-NET-012")).state is State.VIOLATION
+
+
+def test_tcp_timestamps(monkeypatch):
+    monkeypatch.setattr(network, "_sysctl_int", lambda k: 0)
+    assert network.TcpTimestampsProvider().observe(_ctx("OPSEC-NET-013")).state is State.OK
+    monkeypatch.setattr(network, "_sysctl_int", lambda k: 1)
+    assert network.TcpTimestampsProvider().observe(_ctx("OPSEC-NET-013")).state is State.VIOLATION
+
+
+def test_public_ip_leak(monkeypatch):
+    # opt-in: no forbidden_ips => not applicable
+    assert network.PublicIpProvider().observe(_ctx("OPSEC-NET-014")).state is State.NOT_APPLICABLE
+    monkeypatch.setattr(network, "_public_ip", lambda: "203.0.113.9")
+    ctx = _ctx("OPSEC-NET-014", {"forbidden_ips": ["203.0.113.9"]})
+    assert network.PublicIpProvider().observe(ctx).state is State.VIOLATION
+    ctx_ok = _ctx("OPSEC-NET-014", {"forbidden_ips": ["203.0.113.9"]})
+    monkeypatch.setattr(network, "_public_ip", lambda: "45.10.20.30")
+    assert network.PublicIpProvider().observe(ctx_ok).state is State.OK

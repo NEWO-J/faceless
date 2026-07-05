@@ -44,10 +44,10 @@ per-command fast path, therefore cached).
 Severity ordering: `low < medium < high < critical`.
 
 v1 controls: see [`fle/catalog.py`](fle/catalog.py). Domains in use: `identity`,
-`secret`, `egress`, `net`, `disk`, `privesc`.
+`secret`, `egress`, `net`, `disk`.
 
-A **bundle** is a named list of control IDs (for example `linux-net`,
-`linux-privesc`). A `posture` entry of `{bundle: <name>}` expands to those
+A **bundle** is a named list of control IDs (for example `linux-net`).
+A `posture` entry of `{bundle: <name>}` expands to those
 controls with their default severity. Bundles are ergonomic sugar over
 selecting controls individually; they do not change the model.
 
@@ -107,7 +107,32 @@ under `on_command: block`, best-effort refuses to submit a command while
 non-conformant. On the fast path only the `safe` (reversible) remediation subset
 may run automatically; `full` remediation is confined to an explicit `apply`.
 
-## 9. Versioning
+## 9. Attestation
+
+A posture report can be turned into a portable, verifiable credential so a
+remote party (a chat room, a team, an access gateway) can require conformance
+before granting access.
+
+An **attestation token** is a JSON object carrying `baseline_hash` (a SHA-256 of
+the semantic content of the required config), `baseline_name`, `conformant`, a
+`results` array of `{control, state}` pairs, `issued_at`, an optional `nonce`,
+an optional `subject`, the signer's `public_key`, and an Ed25519 `signature`
+over the canonical form of every other field. The token MUST NOT include the
+`observed` values from the report: a member proves conformance without disclosing
+evidence.
+
+A verifier accepts a token only if all hold: the signature is valid, `conformant`
+is true, `baseline_hash` equals the hash of the config the verifier requires,
+`issued_at` is within an allowed age, the `nonce` matches the verifier's
+challenge, and the `public_key` is on the verifier's allowlist (when one is set).
+
+**Trust boundary.** Attestation is self-reported. Without a hardware root of
+trust (for example TPM measured boot) a client can forge conformance. The
+mechanism is therefore a cooperative control: it enforces a shared baseline,
+catches honest drift, and proves freshness. It is not evidence against a
+motivated adversary. Implementations MUST NOT present it as such.
+
+## 10. Versioning
 
 `opsec_version` gates breaking changes to the config/report shapes. New controls
 and new domains are additive and do not bump the version. Removing or

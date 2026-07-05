@@ -85,28 +85,35 @@ The catalog groups controls by domain under the `OPSEC-<DOMAIN>-<NNN>` scheme.
 | `OPSEC-EGRESS-001` | declared VPN interface is present | detect-only |
 | `OPSEC-DISK-001` | system volume encryption is enabled | detect-only |
 
-**Network / egress leaks (Linux)**
+**Network / egress leaks**
+
+The network domain is the deepest, built around the leak vectors the privacy
+community actually tests: DNS, IPv6, and WebRTC leaks, a real kill-switch, and
+LAN-side broadcast hardening.
 
 | ID | Checks |
 |----|--------|
 | `OPSEC-EGRESS-002` | default route rides the declared VPN interface |
-| `OPSEC-NET-001` | DNS resolvers are all on the allowlist (no ISP-DNS leak) |
+| `OPSEC-NET-001` | DNS resolvers are all on the allowlist |
 | `OPSEC-NET-002` | IPv6 is disabled or routed through the VPN |
 | `OPSEC-NET-003` | firewall denies by default (kill-switch) |
 | `OPSEC-NET-004` | no unexpected services listening on non-loopback |
+| `OPSEC-NET-005` | DNS is encrypted (DNS-over-TLS) |
+| `OPSEC-NET-006` | resolver is not the LAN gateway (ISP router) |
+| `OPSEC-NET-007` | LLMNR is disabled (no hostname broadcast / hash capture) |
+| `OPSEC-NET-008` | mDNS is not broadcasting the host |
+| `OPSEC-NET-009` | IPv6 privacy extensions are enabled (RFC 8981) |
+| `OPSEC-NET-010` | no MAC-derived (EUI-64) IPv6 address |
+| `OPSEC-NET-011` | Wi-Fi MAC randomization is configured |
+| `OPSEC-NET-012` | captive-portal connectivity check is disabled |
+| `OPSEC-NET-013` | TCP timestamps disabled (no uptime fingerprint) |
+| `OPSEC-NET-014` | public egress IP is not a forbidden (real) address |
 
-**System hardening / privesc (Linux)**
-
-| ID | Checks |
-|----|--------|
-| `OPSEC-PRIV-001` | no known-exploitable SUID binaries |
-| `OPSEC-PRIV-002` | sudo requires a password (no NOPASSWD) |
-| `OPSEC-PRIV-003` | no user-writable directories in PATH |
-| `OPSEC-PRIV-004` | SSH does not permit direct root login |
-| `OPSEC-PRIV-005` | ptrace scope hardening is enabled |
-
-Linux controls report `not_applicable` on other platforms, so one config runs
-cleanly everywhere.
+`OPSEC-NET-014` is the definitive leak proof: it fetches your public IP and
+fails if the outside world sees an address you flagged as real. It's opt-in
+(declare `forbidden_ips`) and makes a network call, so it runs only when asked.
+Everything else is passive and offline. Linux-specific controls report
+`not_applicable` on other platforms, so one config runs cleanly everywhere.
 
 ### Bundles
 
@@ -115,7 +122,6 @@ Pull a whole domain in with one line instead of listing each control:
 ```yaml
 posture:
   - bundle: linux-net        # OPSEC-EGRESS-001/002 + OPSEC-NET-001..004
-  - bundle: linux-privesc    # OPSEC-PRIV-001..005
   - control: OPSEC-EGRESS-002 # also list a control to pass params
     params: { interface: wg0 }
 ```
@@ -133,9 +139,41 @@ report format. The JSON Schemas live in [`schema/`](schema/).
 | `fle lock` | pin the current known-good posture to `opsec.lock.yaml` |
 | `fle status` | one-line summary for the shell prompt |
 | `fle hook install\|uninstall` | wire/unwire the per-command hook |
+| `fle key` | show your attestation public key |
+| `fle attest` | sign a posture attestation against a required baseline |
+| `fle verify-attestation` | verify someone's attestation token |
 
 For machine output, `--json` is the canonical report and `--sarif` exports SARIF
 2.1.0 for CI or code-scanning tools.
+
+## Group attestation
+
+A room, team, or group can require members to prove they meet a shared posture
+before they join. The room publishes a required `opsec.yaml`; a member proves
+they satisfy it with a signed token that a gatekeeper (a chat bot or a person on
+any platform) verifies.
+
+```bash
+# member: check against the room's baseline and sign a token
+fle attest -c room-baseline.yaml --nonce "$CHALLENGE" --subject ghostwriter -o token.json
+
+# gatekeeper: accept only if conformant, bound to this baseline, fresh, and unforged
+fle verify-attestation token.json --baseline room-baseline.yaml --nonce "$CHALLENGE" \
+    --max-age 600 --allow <member-pubkey>
+```
+
+The token is Ed25519-signed and bound to a hash of the exact baseline, so a
+member cannot attest against a weaker config. It carries per-control pass/fail
+but never the observed values, so you prove conformance without handing the room
+your IPs, paths, or resolvers. The `--nonce` is a challenge from the gatekeeper
+that stops replay of an old token.
+
+**Trust model, stated plainly:** this is self-attested. A patched client can
+forge a "conformant" report, so treat attestation as a *cooperative* control. It
+makes everyone run the same check against the same baseline, catches honest drift
+and misconfiguration, and proves freshness. It does not stop a determined liar.
+Defeating that needs hardware attestation (TPM measured boot), which fle does not
+attempt.
 
 ## Extending
 

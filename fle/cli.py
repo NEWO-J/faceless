@@ -14,6 +14,7 @@ Nothing here is a gate that runs code — it evaluates *posture*. Exit codes:
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -23,7 +24,8 @@ from typing import Sequence
 from rich.panel import Panel
 from rich.text import Text
 
-from . import __version__, cache, hooks
+from . import __version__, attest, cache, hooks
+from .attest import AttestError
 from .config import DEFAULT_CONFIG_NAME, DEFAULT_LOCK_NAME, OpsecConfig
 from .engine import converge, evaluate
 from .errors import ExitCode, FacelessError
@@ -87,6 +89,25 @@ def build_parser() -> argparse.ArgumentParser:
     h_uninstall.add_argument("--shell", default=_default_shell(), choices=hooks.SUPPORTED_SHELLS)
     h_uninstall.add_argument("--profile", default=None)
     h_uninstall.set_defaults(func=cmd_hook_uninstall)
+
+    p_key = sub.add_parser("key", help="show your attestation public key (creates one if needed)")
+    p_key.set_defaults(func=cmd_key)
+
+    p_attest = sub.add_parser("attest", parents=[cfg],
+                              help="sign a posture attestation against a required baseline")
+    p_attest.add_argument("--nonce", default="", help="challenge string from the gatekeeper")
+    p_attest.add_argument("--subject", default="", help="who you are in the room (e.g. persona handle)")
+    p_attest.add_argument("-o", "--out", default=None, help="write the token here (default: stdout)")
+    p_attest.set_defaults(func=cmd_attest)
+
+    p_va = sub.add_parser("verify-attestation", help="verify someone's attestation token")
+    p_va.add_argument("token", help="path to the token JSON, or - for stdin")
+    p_va.add_argument("--baseline", default=None, help="required baseline config to bind against")
+    p_va.add_argument("--max-age", type=float, default=900.0, help="max token age in seconds")
+    p_va.add_argument("--nonce", default=None, help="challenge the token must echo")
+    p_va.add_argument("--allow", action="append", default=None, metavar="PUBKEY",
+                      help="allowlisted public key (repeatable)")
+    p_va.set_defaults(func=cmd_verify_attestation)
 
     return parser
 
@@ -298,6 +319,65 @@ enforcement:
 """
 
 
+def cmd_key(namespace: argparse.Namespace) -> int:
+    key = attest.load_or_create_key()
+    pub = attest.public_key_b64(key)
+    console.print(Panel(
+        Text.assemble(("Your attestation public key (share this with room admins):\n\n", "bold"),
+                      (pub, "cyan")),
+        title="[bold]FLE · ATTESTATION KEY[/]", border_style="cyan", expand=False,
+    ))
+    print(pub)  # stdout, so it can be piped
+    return ExitCode.OK
+
+
+def cmd_attest(namespace: argparse.Namespace) -> int:
+    config = _load(namespace)
+    cfg_path = _config_path(namespace)
+    report = evaluate(config)
+    key = attest.load_or_create_key()
+    token = attest.produce(
+        report,
+        baseline_hash=attest.baseline_hash(cfg_path),
+        baseline_name=config.name,
+        private_key=key,
+        nonce=namespace.nonce,
+        subject=namespace.subject,
+    )
+    payload = json.dumps(token, indent=2)
+    if namespace.out:
+        Path(namespace.out).write_text(payload, encoding="utf-8")
+        console.print(f"[green]Wrote attestation to {namespace.out}[/]")
+    else:
+        print(payload)
+    if not report.conformant:
+        console.print("[yellow]Warning: your posture is non-conformant; a gatekeeper will reject this.[/]")
+    return report.exit_code()
+
+
+def cmd_verify_attestation(namespace: argparse.Namespace) -> int:
+    token = attest.load_token(namespace.token)
+    required = attest.baseline_hash(namespace.baseline) if namespace.baseline else None
+    result = attest.verify(
+        token,
+        required_baseline_hash=required,
+        max_age_seconds=namespace.max_age,
+        expected_nonce=namespace.nonce,
+        allowed_public_keys=namespace.allow,
+    )
+    border = "green" if result.ok else "red"
+    who = result.subject or "(no subject)"
+    console.print(Panel(
+        Text.assemble(
+            (f"{result.summary}\n", "bold green" if result.ok else "bold red"),
+            (f"subject: {who}\n", "dim"),
+            (f"key: {result.public_key[:16]}...", "dim"),
+        ),
+        title="[bold]FLE · ATTESTATION[/]", border_style=border, expand=False,
+    ))
+    return ExitCode.OK if result.ok else ExitCode.NON_CONFORMANT
+
+
 def print_quickstart() -> None:
     console.print(Panel(
         Text.assemble(
@@ -320,6 +400,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return int(ExitCode.OK)
     try:
         return int(namespace.func(namespace))
+    except AttestError as exc:
+        console.print(f"[bold red]fle: {exc}[/]")
+        return int(ExitCode.ENGINE_ERROR)
     except FacelessError as exc:
         console.print(f"[bold red]fle: {exc}[/]")
         return int(exc.exit_code)
