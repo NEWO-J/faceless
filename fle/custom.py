@@ -1,23 +1,3 @@
-"""Declarative custom controls: define a check in YAML, no Python required.
-
-Most posture checks are "run X, assert Y." This module lets users express those
-directly in ``opsec.yaml`` under a ``controls:`` list, so fle becomes a framework
-rather than a fixed catalog. Each custom control has a ``kind`` (``command`` |
-``file`` | ``env`` | ``sysctl``) and an ``assert`` block evaluated by a small,
-explicit DSL.
-
-    controls:
-      - id: FLE-CUSTOM-001
-        title: Screen locks after 5 minutes idle
-        kind: command
-        run: ["gsettings", "get", "org.gnome.desktop.session", "idle-delay"]
-        assert: { max: 300 }
-        severity: medium
-
-A single :class:`CustomCheckProvider` interprets the definition at evaluation
-time; the config parser (in ``config.py``) validates the shape up front.
-"""
-
 from __future__ import annotations
 
 import os
